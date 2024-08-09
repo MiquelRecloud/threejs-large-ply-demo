@@ -1,10 +1,10 @@
 {
   "files": {
-    "main.js": "/threejs-large-ply-demo/static/js/main.c56f70d4.js",
+    "main.js": "/threejs-large-ply-demo/static/js/main.78f980f2.js",
     "index.html": "/threejs-large-ply-demo/index.html",
-    "main.c56f70d4.js.map": "/threejs-large-ply-demo/static/js/main.c56f70d4.js.map"
+    "main.78f980f2.js.map": "/threejs-large-ply-demo/static/js/main.78f980f2.js.map"
   },
   "entrypoints": [
-    "static/js/main.c56f70d4.js"
+    "static/js/main.78f980f2.js"
   ]
 }
