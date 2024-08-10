@@ -48,20 +48,37 @@ function App() {
                 renderer.render(scene, camera)
                 console.log("Full-resolution point cloud loaded")
 
+                // Function to show downsampled points
                 const showDownsampled = () => {
                     if (fullResPoints) fullResPoints.visible = false
                     if (downsampledPoints) downsampledPoints.visible = true
                     renderer.render(scene, camera)
                 }
 
+                // Function to show full-resolution points
                 const showFullRes = () => {
                     if (fullResPoints) fullResPoints.visible = true
                     if (downsampledPoints) downsampledPoints.visible = false
                     renderer.render(scene, camera)
                 }
 
-                controls.addEventListener('start', showDownsampled)
-                controls.addEventListener('end', showFullRes)
+                let isInteracting;
+
+                const handleInteraction = () => {
+                    if (!isInteracting) {
+                        showDownsampled();
+                        isInteracting = true;
+                    }
+
+                    clearTimeout(isInteracting);
+
+                    isInteracting = setTimeout(() => {
+                        showFullRes();
+                        isInteracting = false;
+                    }, 100);
+                };
+
+                controls.addEventListener('change', handleInteraction)
             }
         )
 
