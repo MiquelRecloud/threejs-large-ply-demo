@@ -1,10 +1,13 @@
-import React, { useRef, useEffect } from 'react'
+import React, { useRef, useEffect, useState } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { PLYLoader } from 'three/examples/jsm/loaders/PLYLoader'
+import LoadingIndicator from './LoadingIndicator'
 
 function App() {
     const mountRef = useRef(null)
+
+    const [showLoading, setShowLoading] = useState(true)
 
     useEffect(() => {
         // Scene setup
@@ -17,8 +20,8 @@ function App() {
 
         // Custom shader material
         let material = new THREE.PointsMaterial({
-            color: '#ffffff',
-            size: 0.005
+            size: 0.005,
+            vertexColors: true
         })
 
         // OrbitControls
@@ -29,7 +32,7 @@ function App() {
 
         const loader = new PLYLoader()
         loader.load(
-            process.env.PUBLIC_URL + '/K24AC201_ds.ply',
+            process.env.PUBLIC_URL + '/diff_ds.ply',
             (bufferGeometry) => {
                 downsampledPoints = new THREE.Points(bufferGeometry, material)
                 scene.add(downsampledPoints)
@@ -38,21 +41,33 @@ function App() {
             }
         )
 
-        // Load full-resolution point cloud
-        loader.load(
-            process.env.PUBLIC_URL + '/K24AC201_4M.ply',
-            (bufferGeometry) => {
-                fullResPoints = new THREE.Points(bufferGeometry, material)
-                downsampledPoints.visible = false // Initially hide ds-res point cloud
-                scene.add(fullResPoints)
-                renderer.render(scene, camera)
-                console.log("Full-resolution point cloud loaded")
+        // Load full-resolution point cloud using a Web Worker
+        async function loadFullResPointCloud() {
 
+            const worker = new Worker(new URL('./plyWorker.js', import.meta.url), { type: 'module' })
+
+            worker.postMessage({ fileUrl: process.env.PUBLIC_URL + '/diff_4M.ply' })
+            worker.onmessage = function (e) {
+                const { vertices, colors, normals } = e.data
+                let bufferGeometry = new THREE.BufferGeometry()
+                bufferGeometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3))
+                bufferGeometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
+                bufferGeometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3))
+
+                // Create a Points object and add it to the scene
+                fullResPoints = new THREE.Points(bufferGeometry, material)
+                downsampledPoints.visible = false // Initially hide downsampled point cloud
+                scene.add(fullResPoints)
+                //renderer.render(scene, camera)
+                setShowLoading(false)
+                console.log("Full-resolution point cloud loaded")
+                
                 // Function to show downsampled points
                 const showDownsampled = () => {
                     if (fullResPoints) fullResPoints.visible = false
                     if (downsampledPoints) downsampledPoints.visible = true
                     renderer.render(scene, camera)
+                    setShowLoading(true)
                 }
 
                 // Function to show full-resolution points
@@ -60,27 +75,31 @@ function App() {
                     if (fullResPoints) fullResPoints.visible = true
                     if (downsampledPoints) downsampledPoints.visible = false
                     renderer.render(scene, camera)
+                    setShowLoading(false)
                 }
 
-                let isInteracting;
+                let isInteracting
 
                 const handleInteraction = () => {
                     if (!isInteracting) {
-                        showDownsampled();
-                        isInteracting = true;
+                        showDownsampled()
+                        isInteracting = true
                     }
 
-                    clearTimeout(isInteracting);
+                    clearTimeout(isInteracting)
 
                     isInteracting = setTimeout(() => {
-                        showFullRes();
-                        isInteracting = false;
-                    }, 100);
-                };
+                        showFullRes()
+                        isInteracting = false
+                    }, 100)
+                }
 
                 controls.addEventListener('change', handleInteraction)
+                
             }
-        )
+        }
+
+        loadFullResPointCloud()
 
         // Initial render
         renderer.render(scene, camera)
@@ -103,7 +122,12 @@ function App() {
         }
     }, [])
 
-    return <div ref={mountRef} />
+    return (
+        <div>
+            <div ref={mountRef} />
+            {showLoading && <LoadingIndicator />}
+        </div>
+    )
 }
 
-export default App;
+export default App
